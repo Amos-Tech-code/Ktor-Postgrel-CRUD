@@ -75,10 +75,51 @@ fun Application.configureRouting(movieDataSource: MovieDataSource) {
 
             patch("update") {
                 val movie = call.receive<Movie>()
-                val id = movie.id ?: return@patch
-                movieDataSource.upsertMovieById(movie)
-                movieDataSource.getMovieById(id)
-                call.respond(movie)
+                movieDataSource.upsertMovie(movie)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            patch("updateByGenre") {
+                val genre = call.queryParameters["genre"]
+                val duration = call.queryParameters["duration"]?.toIntOrNull()
+
+                if (genre.isNullOrBlank() || duration == null) {
+                    return@patch call.respond(HttpStatusCode.BadRequest)
+                }
+
+                movieDataSource.updateMoviesDurationByGenre(duration, genre)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            delete("deleteMovie") {
+                val id = call.queryParameters["id"]?.toIntOrNull() ?:
+                return@delete call.respond(HttpStatusCode.BadRequest)
+
+                val deletedCount = movieDataSource.deleteMovieById(id)
+                call.respond(message = "Deleted rows: $deletedCount", status = HttpStatusCode.OK)
+            }
+
+            delete("deleteMovieByGenre/{genre}") {
+                val genre = call.pathParameters["genre"] ?:
+                return@delete call.respond(HttpStatusCode.BadRequest)
+
+                val deletedCount = movieDataSource.deleteMovieByGenre(genre)
+                call.respond(message = "Deleted rows: $deletedCount", status = HttpStatusCode.OK)
+
+            }
+
+            delete("deleteJoin/{id}") {
+                val id = call.pathParameters["id"]?.toIntOrNull() ?:
+                return@delete call.respond(HttpStatusCode.BadRequest)
+
+                val deletedCount = movieDataSource.deleteActorsByMovieId(id)
+                call.respond(message = "Deleted rows: $deletedCount", status = HttpStatusCode.OK)
+
+            }
+
+            delete("all") {
+                val deletedCount = movieDataSource.deleteAllMovies()
+                call.respond("Deleted rows: $deletedCount")
             }
         }
     }
